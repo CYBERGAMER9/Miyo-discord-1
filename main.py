@@ -119,6 +119,7 @@ async def reload_slash(ctx):
 async def on_ready():
     print(f'Logged in as {bot.user}!')
     await bot.tree.sync()
+    print("Commands synced.")
 
 # Function to run Flask app
 def run_flask():
